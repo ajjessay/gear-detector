@@ -50,16 +50,12 @@
             box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
         }
 
-        #webcam-container {
+        /* Uses a standard mirrored HTML5 video element */
+        #webcam-feed {
             width: 100%;
             height: 100%;
-            transform: scaleX(-1);
-        }
-
-        #webcam-container canvas {
-            width: 100% !important;
-            height: 100% !important;
             object-fit: cover;
+            transform: scaleX(-1);
         }
 
         .log-panel {
@@ -135,7 +131,7 @@
         <p class="subtitle">AI verification module for peer-to-peer student equipment sharing.</p>
 
         <div class="video-wrapper">
-            <div id="webcam-container"></div>
+            <video id="webcam-feed" autoplay playsinline muted></video>
         </div>
 
         <div class="log-panel">
@@ -148,66 +144,70 @@
 
     <script type="text/javascript">
         const MODEL_URL = "https://teachablemachine.withgoogle.com/models/vzm7A_O68/"; 
-
-        let model, webcam, labelContainer, maxPredictions;
+        let model, maxPredictions, labelContainer;
+        const videoElement = document.getElementById('webcam-feed');
+        const statusDisplay = document.getElementById("status-output");
 
         window.addEventListener('DOMContentLoaded', initializeApp);
 
         async function initializeApp() {
-            const statusDisplay = document.getElementById("status-output");
-            
             try {
                 statusDisplay.innerText = "Loading GearShare model layers...";
-                
                 model = await tmImage.load(MODEL_URL + "model.json", MODEL_URL + "metadata.json");
                 maxPredictions = model.getTotalClasses();
 
-                statusDisplay.innerText = "Connecting camera hardware...";
+                statusDisplay.innerText = "Requesting video stream...";
                 
-                // FIXED: Changed setup parameters to pass a generic true fallback object
-                webcam = new tmImage.Webcam(500, 375, true); 
+                // Native media call that bypasses library-level bugs
+                const stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { width: 500, height: 375, facingMode: "user" }, 
+                    audio: false 
+                });
                 
-                // Request webcam with universal fallback constraints
-                await webcam.setup({ facingMode: "user" }); 
-                await webcam.play();
+                videoElement.srcObject = stream;
                 
-                document.getElementById("webcam-container").appendChild(webcam.canvas);
-                labelContainer = document.getElementById("label-container");
-                
-                for (let i = 0; i < maxPredictions; i++) {
-                    const row = document.createElement("div");
-                    row.className = "prediction-row";
-                    row.innerHTML = `
-                        <div class="label-text">
-                            <span class="class-name">--</span>
-                            <span class="class-percentage">0%</span>
-                        </div>
-                        <div class="progress-bar-bg">
-                            <div class="progress-bar-fill"></div>
-                        </div>
-                    `;
-                    labelContainer.appendChild(row);
-                }
-
-                statusDisplay.innerText = "System online. Ready to detect gear.";
-                window.requestAnimationFrame(updateFrameLoop);
+                videoElement.onloadedmetadata = () => {
+                    setupProgressBarUI();
+                    statusDisplay.innerText = "System online. Ready to detect gear.";
+                    window.requestAnimationFrame(updateFrameLoop);
+                };
 
             } catch (error) {
-                statusDisplay.innerText = "Error: Click the lock icon in your URL bar to allow camera access.";
+                statusDisplay.innerText = "Access Error: Check camera lock settings or verify no other app is using your webcam.";
                 statusDisplay.style.color = "#ef4444";
                 console.error(error);
             }
         }
 
+        function setupProgressBarUI() {
+            labelContainer = document.getElementById("label-container");
+            labelContainer.innerHTML = ""; // Clear placeholders
+            for (let i = 0; i < maxPredictions; i++) {
+                const row = document.createElement("div");
+                row.className = "prediction-row";
+                row.innerHTML = `
+                    <div class="label-text">
+                        <span class="class-name">--</span>
+                        <span class="class-percentage">0%</span>
+                    </div>
+                    <div class="progress-bar-bg">
+                        <div class="progress-bar-fill"></div>
+                    </div>
+                `;
+                labelContainer.appendChild(row);
+            }
+        }
+
         async function updateFrameLoop() {
-            webcam.update(); 
-            await processCurrentFrame();
+            if (videoElement.readyState === videoElement.HAVE_ENOUGH_DATA) {
+                await processCurrentFrame();
+            }
             window.requestAnimationFrame(updateFrameLoop);
         }
 
         async function processCurrentFrame() {
-            const predictions = await model.predict(webcam.canvas);
-            const statusDisplay = document.getElementById("status-output");
+            // Predict directly from the native video element container instead of a canvas object
+            const predictions = await model.predict(videoElement);
             
             let topConfidence = 0;
             let currentActiveMatch = "Scanning workspace for gear...";
@@ -222,9 +222,11 @@
                 }
 
                 const row = labelContainer.childNodes[i];
-                row.querySelector(".class-name").innerText = name;
-                row.querySelector(".class-percentage").innerText = `${Math.round(score * 100)}%`;
-                row.querySelector(".progress-bar-fill").style.width = `${score * 100}%`;
+                if (row) {
+                    row.querySelector(".class-name").innerText = name;
+                    row.querySelector(".class-percentage").innerText = `${Math.round(score * 100)}%`;
+                    row.querySelector(".progress-bar-fill").style.width = `${score * 100}%`;
+                }
             }
 
             statusDisplay.style.color = "#38bdf8";
