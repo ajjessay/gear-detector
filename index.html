@@ -3,88 +3,196 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GearShare | AI Gear Detector</title>
+    <title>AI Asset Verification Hub</title>
     <style>
+        :root {
+            --bg-dark: #0f0f13;
+            --panel-bg: rgba(30, 30, 38, 0.6);
+            --border-color: rgba(249, 115, 22, 0.2);
+            --primary-orange: #f97316;
+            --primary-glow: rgba(249, 115, 22, 0.15);
+            --text-main: #f1f5f9;
+            --text-muted: #94a3b8;
+            --accent-blue: #38bdf8;
+            --success-green: #10b981;
+        }
+
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
         }
 
         body {
-            background-color: #1e1e24;
-            color: #e2e8f0;
-            text-align: center;
-            padding: 40px 20px;
+            background-color: var(--bg-dark);
+            background-image: 
+                radial-gradient(at 0% 0%, rgba(249, 115, 22, 0.08) 0px, transparent 50%),
+                radial-gradient(at 100% 100%, rgba(56, 189, 248, 0.05) 0px, transparent 50%);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
         }
 
-        .container {
-            max-width: 800px;
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 40px;
+            background: rgba(15, 15, 19, 0.8);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            z-index: 100;
+        }
+
+        .logo-area { display: flex; align-items: center; gap: 10px; }
+        .logo-dot { width: 12px; height: 12px; background: var(--primary-orange); border-radius: 50%; box-shadow: 0 0 10px var(--primary-orange); }
+        h1 { font-size: 1.5rem; font-weight: 800; letter-spacing: -0.025em; color: #fff; }
+        h1 span { color: var(--primary-orange); }
+        .nav-badge { background: rgba(56, 189, 248, 0.1); border: 1px solid rgba(56, 189, 248, 0.2); color: var(--accent-blue); padding: 6px 14px; border-radius: 20px; font-size: 0.8rem; font-weight: 600; text-transform: uppercase; }
+
+        .workspace {
+            flex: 1;
+            display: grid;
+            grid-template-columns: 1.2fr 1fr;
+            gap: 30px;
+            max-width: 1200px;
+            width: 100%;
             margin: 0 auto;
+            padding: 40px 20px;
+            align-items: start;
         }
 
-        h1 {
-            color: #f97316;
-            font-size: 2.5rem;
-            margin-bottom: 5px;
-            font-weight: 700;
+        @media (max-width: 900px) { .workspace { grid-template-columns: 1fr; } }
+
+        .tabs-container {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            background: rgba(0, 0, 0, 0.2);
+            padding: 6px;
+            border-radius: 14px;
+            border: 1px solid rgba(255,255,255,0.05);
         }
 
-        p.subtitle {
-            color: #94a3b8;
-            font-size: 1.1rem;
-            margin-bottom: 30px;
+        .tab-btn {
+            flex: 1;
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            padding: 12px;
+            border-radius: 10px;
+            font-weight: 600;
+            font-size: 0.95rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
         }
 
-        .video-container {
+        .tab-btn.active {
+            background: var(--primary-orange);
+            color: #fff;
+            box-shadow: 0 4px 12px rgba(249, 115, 22, 0.25);
+        }
+
+        .camera-card {
+            background: var(--panel-bg);
+            backdrop-filter: blur(16px);
+            border: 1px solid var(--border-color);
+            border-radius: 24px;
+            padding: 24px;
+            box-shadow: 0 20px 40px -15px rgba(0,0,0,0.7);
+        }
+
+        .view-wrapper {
             position: relative;
             width: 100%;
-            max-width: 500px;
-            height: 375px;
-            margin: 0 auto;
-            background-color: #16161a;
-            border: 4px solid #f97316;
-            border-radius: 12px;
+            aspect-ratio: 4/3;
+            background: #050507;
+            border-radius: 16px;
             overflow: hidden;
-            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
-        #webcam-feed {
-            position: absolute;
-            top: 0;
-            left: 0;
+        .view-pane { width: 100%; height: 100%; position: absolute; top:0; left:0; display: none; }
+        .view-pane.active { display: block; }
+
+        #webcam-feed, #detection-canvas { position: absolute; width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); top:0; left:0; }
+        #detection-canvas { z-index: 10; }
+
+        .dropzone {
             width: 100%;
             height: 100%;
-            object-fit: cover;
-            transform: scaleX(-1); /* Mirror view */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 40px;
+            border: 2px dashed rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: rgba(255,255,255,0.01);
         }
 
-        /* Overlay canvas for drawing real-time tracking boxes */
-        #detection-canvas {
-            position: absolute;
-            top: 0;
-            left: 0;
+        .dropzone:hover {
+            border-color: var(--primary-orange);
+            background: rgba(249, 115, 22, 0.02);
+        }
+
+        .dropzone-icon { font-size: 3rem; margin-bottom: 16px; color: var(--text-muted); }
+        
+        #uploaded-image-render {
             width: 100%;
             height: 100%;
-            z-index: 10;
-            transform: scaleX(-1); /* Match mirrored video */
+            object-fit: contain;
+            display: none;
         }
 
-        .log-panel {
-            max-width: 500px;
-            margin: 25px auto 0 auto;
-            padding: 15px 20px;
-            background-color: #272730;
-            border-radius: 8px;
-            border-left: 4px solid #38bdf8;
-            text-align: left;
-        }
-
-        #status-output {
-            font-size: 1.2rem;
+        .action-btn {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #fff;
+            padding: 14px 28px;
+            border-radius: 12px;
+            font-size: 1rem;
             font-weight: 600;
-            color: #38bdf8;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            margin-top: 16px;
+            width: 100%;
+        }
+
+        .action-btn:hover {
+            background: var(--text-main);
+            color: var(--bg-dark);
+        }
+
+        .meta-container { display: flex; flex-direction: column; gap: 20px; }
+        .card { background: var(--panel-bg); backdrop-filter: blur(16px); border: 1px solid rgba(255, 255, 255, 0.05); border-radius: 20px; padding: 24px; text-align: left; }
+        .card-title { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+        .pulse-indicator { width: 8px; height: 8px; background: #64748b; border-radius: 50%; }
+        .pulse-indicator.live { background: var(--success-green); animation: pulse 2s infinite; }
+        #status-output { font-size: 1.3rem; font-weight: 700; color: var(--text-main); line-height: 1.3; }
+        .info-text { color: var(--text-muted); font-size: 0.9rem; margin-top: 8px; }
+
+        .target-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+        .target-item { background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.05); padding: 12px; border-radius: 12px; font-size: 0.9rem; font-weight: 500; color: var(--text-muted); display: flex; align-items: center; gap: 10px; }
+        .target-item.active { border-color: var(--primary-orange); background: rgba(249, 115, 22, 0.05); color: var(--primary-orange); }
+        .target-dot { width: 6px; height: 6px; background: rgba(255,255,255,0.2); border-radius: 50%; }
+        .target-item.active .target-dot { background: var(--primary-orange); box-shadow: 0 0 8px var(--primary-orange); }
+
+        @keyframes pulse {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+            70% { transform: scale(1); box-shadow: 0 0 0 8px rgba(16, 185, 129, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
         }
     </style>
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
@@ -92,95 +200,193 @@
 </head>
 <body>
 
-    <div class="container">
-        <h1>GearShare AI Gear Detector</h1>
-        <p class="subtitle">Open-source object detection pipeline for peer-to-peer asset verification.</p>
+    <header>
+        <div class="logo-area">
+            <div class="logo-dot"></div>
+            <h1>Asset<span>Audit</span></h1>
+        </div>
+        <div class="nav-badge">Core AI Audit Hub</div>
+    </header>
 
-        <div class="video-container">
-            <video id="webcam-feed" autoplay playsinline muted></video>
-            <canvas id="detection-canvas"></canvas>
+    <div class="workspace">
+        <div class="main-control-pane">
+            <div class="tabs-container">
+                <button class="tab-btn active" onclick="switchMode('upload')">📁 Upload Asset Image</button>
+                <button class="tab-btn" onclick="switchMode('camera')">📷 Live Webcam Stream</button>
+            </div>
+
+            <div class="camera-card">
+                <div class="view-wrapper">
+                    <div id="pane-upload" class="view-pane active">
+                        <div class="dropzone" onclick="document.getElementById('file-input').click()">
+                            <div class="dropzone-icon">📥</div>
+                            <h3>Drag & drop asset photo</h3>
+                            <p style="color: var(--text-muted); font-size: 0.9rem; margin-top: 6px;">or click to browse native device filesystem</p>
+                            <input type="file" id="file-input" accept="image/*" style="display: none;" onchange="handleFileProcessing(this)">
+                        </div>
+                        <img id="uploaded-image-render" alt="Asset Validation Frame">
+                    </div>
+
+                    <div id="pane-camera" class="view-pane">
+                        <video id="webcam-feed" autoplay playsinline muted></video>
+                    </div>
+                    
+                    <canvas id="detection-canvas"></canvas>
+                </div>
+
+                <button id="camera-toggle-btn" class="action-btn" style="display: none;" onclick="startCameraHardwareLine()">Initialize Camera Device Link</button>
+            </div>
         </div>
 
-        <div class="log-panel">
-            <div id="status-output">Downloading neural network layers from TensorFlow...</div>
+        <div class="meta-container">
+            <div class="card" style="border-left: 4px solid var(--primary-orange);">
+                <div class="card-title">
+                    <div class="pulse-indicator" id="status-pulse"></div>
+                    Engine Security Pipeline Logs
+                </div>
+                <div id="status-output">System ready. Select your preferred asset loading method.</div>
+                <p class="info-text">Our neural network checks item authenticity configurations before recording parameters to local database stores.</p>
+            </div>
+
+            <div class="card">
+                <div class="card-title">Supported Verification Registry</div>
+                <div class="target-grid">
+                    <div class="target-item" id="tgt-laptop"><div class="target-dot"></div>Laptop Systems</div>
+                    <div class="target-item" id="tgt-mouse"><div class="target-dot"></div>Mouse Units</div>
+                    <div class="target-item" id="tgt-keyboard"><div class="target-dot"></div>Keyboards</div>
+                    <div class="target-item" id="tgt-cell phone"><div class="target-dot"></div>Smartphones</div>
+                </div>
+            </div>
         </div>
     </div>
 
     <script type="text/javascript">
-        let model;
+        let model, streamLine = null;
+        let activeMode = 'upload';
+        let isCameraActive = false;
+
         const videoElement = document.getElementById('webcam-feed');
         const canvasElement = document.getElementById('detection-canvas');
+        const imageElement = document.getElementById('uploaded-image-render');
         const ctx = canvasElement.getContext('2d');
+        
         const statusDisplay = document.getElementById("status-output");
+        const pulseIndicator = document.getElementById("status-pulse");
+        const cameraActionBtn = document.getElementById("camera-toggle-btn");
 
-        window.addEventListener('DOMContentLoaded', initializeAI);
+        const targetClasses = ['cell phone', 'laptop', 'mouse', 'keyboard'];
 
-        async function initializeAI() {
-            try {
-                // Load the COCO-SSD model directly from TensorFlow's open-source library CDN
-                model = await cocoSsd.load();
-                statusDisplay.innerText = "Model loaded. Activating webcam matrix...";
+        window.addEventListener('DOMContentLoaded', async () => {
+            statusDisplay.innerText = "Downloading neural pipeline arrays...";
+            model = await cocoSsd.load();
+            statusDisplay.innerText = "System online. Upload an item image or toggle live scan mode.";
+            pulseIndicator.classList.add('live');
+        });
 
-                const stream = await navigator.mediaDevices.getUserMedia({ 
-                    video: { width: 500, height: 375, facingMode: "user" }, 
-                    audio: false 
-                });
-                videoElement.srcObject = stream;
+        function switchMode(mode) {
+            if (mode === activeMode) return;
+            activeMode = mode;
 
-                videoElement.onloadedmetadata = () => {
-                    // Match canvas coordinate matrix dimensions to visual video dimensions
-                    canvasElement.width = videoElement.videoWidth;
-                    canvasElement.height = videoElement.videoHeight;
-                    
-                    statusDisplay.innerText = "System online. Scan your mouse, phone, or laptop.";
-                    predictLoop();
-                };
-            } catch (error) {
-                statusDisplay.innerText = "Hardware Error: Please check camera permissions.";
-                statusDisplay.style.color = "#ef4444";
-                console.error(error);
+            ctx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+            targetClasses.forEach(cls => document.getElementById(`tgt-${cls}`).classList.remove('active'));
+            statusDisplay.innerText = "Awaiting input resource data stream...";
+
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.toggle('active'));
+            document.querySelectorAll('.view-pane').forEach(pane => pane.classList.remove('active'));
+            document.getElementById(`pane-${mode}`).classList.add('active');
+
+            if (mode === 'camera') {
+                cameraActionBtn.style.display = "block";
+                imageElement.style.display = "none";
+                document.querySelector('.dropzone').style.display = "flex";
+            } else {
+                cameraActionBtn.style.display = "none";
+                killCameraStream();
             }
         }
 
-        async function predictLoop() {
-            // Run object detection frame evaluation
+        function handleFileProcessing(input) {
+            const file = input.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                document.querySelector('.dropzone').style.display = "none";
+                imageElement.src = e.target.result;
+                imageElement.style.display = "block";
+
+                imageElement.onload = async function() {
+                    canvasElement.width = imageElement.naturalWidth;
+                    canvasElement.height = imageElement.naturalHeight;
+                    
+                    statusDisplay.innerText = "Scanning static image matrix data layers...";
+                    const predictions = await model.detect(imageElement);
+                    renderDetectionOutlines(predictions, false);
+                }
+            }
+            reader.readAsDataURL(file);
+        }
+
+        async function startCameraHardwareLine() {
+            try {
+                statusDisplay.innerText = "Opening device hardware channels...";
+                streamLine = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+                videoElement.srcObject = streamLine;
+                isCameraActive = true;
+                cameraActionBtn.style.display = "none";
+
+                videoElement.onloadedmetadata = () => {
+                    canvasElement.width = videoElement.videoWidth;
+                    canvasElement.height = videoElement.videoHeight;
+                    statusDisplay.innerText = "Camera synchronized. Scanning pipeline workspace frames...";
+                    executeLiveTrackingFrames();
+                };
+            } catch (err) {
+                statusDisplay.innerText = "Hardware Line Fail: Verify security permissions are allowed.";
+            }
+        }
+
+        async function executeLiveTrackingFrames() {
+            if (!isCameraActive || activeMode !== 'camera') return;
             const predictions = await model.detect(videoElement);
-            
-            // Clear previous frames bounding lines
+            renderDetectionOutlines(predictions, true);
+            window.requestAnimationFrame(executeLiveTrackingFrames);
+        }
+
+        function killCameraStream() {
+            isCameraActive = false;
+            if (streamLine) {
+                streamLine.getTracks().forEach(track => track.stop());
+                streamLine = null;
+            }
+        }
+
+        function renderDetectionOutlines(predictions, shouldMirror) {
             ctx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+            let detectedText = "No verified assets cataloged in viewport arrays.";
             
-            let detectedText = "Scanning workspace for gear...";
+            targetClasses.forEach(cls => document.getElementById(`tgt-${cls}`).classList.remove('active'));
 
             predictions.forEach(prediction => {
-                // Filter models to display target categories relevant to GearShare hardware marketplace
-                const targetClasses = ['cell phone', 'laptop', 'mouse', 'keyboard', 'book'];
-                
                 if (targetClasses.includes(prediction.class)) {
-                    detectedText = `Verified Gear Match: ${prediction.class.toUpperCase()} (${Math.round(prediction.score * 100)}%)`;
+                    detectedText = `Verified Registry Match: ${prediction.class.toUpperCase()} [${Math.round(prediction.score * 100)}% Match Density]`;
+                    document.getElementById(`tgt-${prediction.class}`).classList.add('active');
+
+                    let [x, y, width, height] = prediction.bbox;
                     
-                    // Extract coordinates for object placement
-                    const [x, y, width, height] = prediction.bbox;
-                    
-                    // Draw bounding box outlines over detected items
-                    ctx.strokeStyle = '#f97316'; // GearShare Orange
-                    ctx.lineWidth = 4;
+                    ctx.strokeStyle = '#f97316';
+                    ctx.lineWidth = Math.max(4, canvasElement.width / 150);
                     ctx.strokeRect(x, y, width, height);
-                    
-                    // Draw small label background box
+
                     ctx.fillStyle = '#f97316';
-                    ctx.fillRect(x, y - 25, ctx.measureText(prediction.class).width + 20, 25);
-                    
-                    // Print classification text label over bounding line
-                    ctx.fillStyle = '#1e1e24';
-                    ctx.font = 'bold 14px Segoe UI';
-                    ctx.fillText(prediction.class.toUpperCase(), x + 10, y - 7);
+                    ctx.fillRect(x, y - 30, ctx.measureText(prediction.class).width + 50, 30);
+
+                    ctx.fillStyle = '#0f0f13';
+                    ctx.font = `bold ${Math.max(12, canvasElement.width / 45)}px system-ui`;
+                    ctx.fillText(`${prediction.class.toUpperCase()} ${Math.round(prediction.score * 100)}%`, x + 10, y - 8);
                 }
             });
-
             statusDisplay.innerText = detectedText;
-            
-            // Repeat tracking operations recursively on next layout refresh handle tick
-            window.requestAnimationFrame(predictLoop);
         }
     </script>
 </body>
