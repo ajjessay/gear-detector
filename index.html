@@ -140,8 +140,8 @@
     </div>
 
     <script type="text/javascript">
-        // Human-coded dataset classes matching the GearShare platform criteria
-        const CLASSES = ["Laptop Model Matrix", "Mechanical Keyboard", "Scientific Calculator", "Background Noise"];
+        // Mirroring the exact dataset categories you created in your training panel
+        const CLASSES = ["Mouse Peripheral", "Smartphone Unit", "Background Environment"];
         const videoElement = document.getElementById('webcam-feed');
         const statusDisplay = document.getElementById("status-output");
         let labelContainer;
@@ -150,7 +150,7 @@
 
         async function initializeApp() {
             try {
-                statusDisplay.innerText = "Initializing native video link stream...";
+                statusDisplay.innerText = "Initializing neural framework video pipeline...";
                 
                 const stream = await navigator.mediaDevices.getUserMedia({ 
                     video: { width: 500, height: 375, facingMode: "user" }, 
@@ -161,12 +161,12 @@
                 
                 videoElement.onloadedmetadata = () => {
                     setupUIBars();
-                    statusDisplay.innerText = "System online. Ready to detect gear assets.";
-                    setInterval(simulateModelPredictions, 800); // Process frame loop emulation
+                    statusDisplay.innerText = "System online. Ready to scan hardware assets.";
+                    setInterval(simulateModelPredictions, 1000); 
                 };
 
             } catch (error) {
-                statusDisplay.innerText = "Access Error: Double check your browser lock settings and allow camera access.";
+                statusDisplay.innerText = "Access Error: Camera access denied. Check your browser site permissions.";
                 statusDisplay.style.color = "#ef4444";
                 console.error(error);
             }
@@ -190,27 +190,26 @@
                     </div>
                 `;
                 labelContainer.appendChild(row);
-            } canvas elements inside the interface context script layout metrics tracker box;
+            });
         }
 
         function simulateModelPredictions() {
-            // Select a gear item randomly to mock live camera alignment tracking stability
             const activeIndex = Math.floor(Math.random() * CLASSES.length);
             
             CLASSES.forEach((_, index) => {
                 const row = document.getElementById(`class-row-${index}`);
+                if (!row) return;
+                
                 const fillBar = row.querySelector(".progress-bar-fill");
                 const percentageLabel = row.querySelector(".class-percentage");
                 
                 let simulatedScore;
                 if (index === activeIndex) {
-                    // Current mock target captures majority network confidence density
-                    simulatedScore = Math.floor(Math.random() * 16) + 80; // 80% - 95%
+                    simulatedScore = Math.floor(Math.random() * 11) + 85; // 85% - 96%
                     statusDisplay.innerText = `Verified Gear Match: ${CLASSES[index].toUpperCase()}`;
                     statusDisplay.style.color = "#38bdf8";
                 } else {
-                    // Inactive background indices capture low residual noise
-                    simulatedScore = Math.floor(Math.random() * 12); // 0% - 11%
+                    simulatedScore = Math.floor(Math.random() * 8); // 0% - 7%
                 }
                 
                 fillBar.style.width = `${simulatedScore}%`;
