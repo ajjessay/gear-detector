@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GearShare | Gear Detector</title>
+    <title>GearShare | AI Gear Detector</title>
     <style>
         * {
             margin: 0;
@@ -37,7 +37,7 @@
             margin-bottom: 30px;
         }
 
-        .video-wrapper {
+        .video-container {
             position: relative;
             width: 100%;
             max-width: 500px;
@@ -51,10 +51,24 @@
         }
 
         #webcam-feed {
+            position: absolute;
+            top: 0;
+            left: 0;
             width: 100%;
             height: 100%;
             object-fit: cover;
-            transform: scaleX(-1);
+            transform: scaleX(-1); /* Mirror view */
+        }
+
+        /* Overlay canvas for drawing real-time tracking boxes */
+        #detection-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 10;
+            transform: scaleX(-1); /* Match mirrored video */
         }
 
         .log-panel {
@@ -67,154 +81,106 @@
             text-align: left;
         }
 
-        .log-title {
-            font-size: 0.8rem;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            color: #64748b;
-            margin-bottom: 4px;
-        }
-
         #status-output {
             font-size: 1.2rem;
             font-weight: 600;
             color: #38bdf8;
         }
-
-        .prediction-list {
-            max-width: 500px;
-            margin: 20px auto 0 auto;
-            background: #16161a;
-            padding: 15px;
-            border-radius: 8px;
-            text-align: left;
-        }
-
-        .prediction-row {
-            margin-bottom: 10px;
-        }
-
-        .prediction-row:last-child {
-            margin-bottom: 0;
-        }
-
-        .label-text {
-            display: flex;
-            justify-content: space-between;
-            font-weight: 500;
-            margin-bottom: 4px;
-        }
-
-        .progress-bar-bg {
-            width: 100%;
-            background-color: #272730;
-            height: 8px;
-            border-radius: 4px;
-            overflow: hidden;
-        }
-
-        .progress-bar-fill {
-            height: 100%;
-            background-color: #f97316;
-            width: 0%;
-            transition: width 0.3s ease;
-        }
     </style>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@latest"></script>
 </head>
 <body>
 
     <div class="container">
-        <h1>GearShare Gear Detector</h1>
-        <p class="subtitle">AI verification module for peer-to-peer student equipment sharing.</p>
+        <h1>GearShare AI Gear Detector</h1>
+        <p class="subtitle">Open-source object detection pipeline for peer-to-peer asset verification.</p>
 
-        <div class="video-wrapper">
+        <div class="video-container">
             <video id="webcam-feed" autoplay playsinline muted></video>
+            <canvas id="detection-canvas"></canvas>
         </div>
 
         <div class="log-panel">
-            <div class="log-title">System Status Log</div>
-            <div id="status-output">Booting core hardware components...</div>
+            <div id="status-output">Downloading neural network layers from TensorFlow...</div>
         </div>
-
-        <div id="label-container" class="prediction-list"></div>
     </div>
 
     <script type="text/javascript">
-        // Mirroring the exact dataset categories you created in your training panel
-        const CLASSES = ["Mouse Peripheral", "Smartphone Unit", "Background Environment"];
+        let model;
         const videoElement = document.getElementById('webcam-feed');
+        const canvasElement = document.getElementById('detection-canvas');
+        const ctx = canvasElement.getContext('2d');
         const statusDisplay = document.getElementById("status-output");
-        let labelContainer;
 
-        window.addEventListener('DOMContentLoaded', initializeApp);
+        window.addEventListener('DOMContentLoaded', initializeAI);
 
-        async function initializeApp() {
+        async function initializeAI() {
             try {
-                statusDisplay.innerText = "Initializing neural framework video pipeline...";
-                
+                // Load the COCO-SSD model directly from TensorFlow's open-source library CDN
+                model = await cocoSsd.load();
+                statusDisplay.innerText = "Model loaded. Activating webcam matrix...";
+
                 const stream = await navigator.mediaDevices.getUserMedia({ 
                     video: { width: 500, height: 375, facingMode: "user" }, 
                     audio: false 
                 });
-                
                 videoElement.srcObject = stream;
-                
-                videoElement.onloadedmetadata = () => {
-                    setupUIBars();
-                    statusDisplay.innerText = "System online. Ready to scan hardware assets.";
-                    setInterval(simulateModelPredictions, 1000); 
-                };
 
+                videoElement.onloadedmetadata = () => {
+                    // Match canvas coordinate matrix dimensions to visual video dimensions
+                    canvasElement.width = videoElement.videoWidth;
+                    canvasElement.height = videoElement.videoHeight;
+                    
+                    statusDisplay.innerText = "System online. Scan your mouse, phone, or laptop.";
+                    predictLoop();
+                };
             } catch (error) {
-                statusDisplay.innerText = "Access Error: Camera access denied. Check your browser site permissions.";
+                statusDisplay.innerText = "Hardware Error: Please check camera permissions.";
                 statusDisplay.style.color = "#ef4444";
                 console.error(error);
             }
         }
 
-        function setupUIBars() {
-            labelContainer = document.getElementById("label-container");
-            labelContainer.innerHTML = ""; 
+        async function predictLoop() {
+            // Run object detection frame evaluation
+            const predictions = await model.detect(videoElement);
             
-            CLASSES.forEach((className, index) => {
-                const row = document.createElement("div");
-                row.className = "prediction-row";
-                row.id = `class-row-${index}`;
-                row.innerHTML = `
-                    <div class="label-text">
-                        <span class="class-name">${className}</span>
-                        <span class="class-percentage">0%</span>
-                    </div>
-                    <div class="progress-bar-bg">
-                        <div class="progress-bar-fill"></div>
-                    </div>
-                `;
-                labelContainer.appendChild(row);
-            });
-        }
+            // Clear previous frames bounding lines
+            ctx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+            
+            let detectedText = "Scanning workspace for gear...";
 
-        function simulateModelPredictions() {
-            const activeIndex = Math.floor(Math.random() * CLASSES.length);
-            
-            CLASSES.forEach((_, index) => {
-                const row = document.getElementById(`class-row-${index}`);
-                if (!row) return;
+            predictions.forEach(prediction => {
+                // Filter models to display target categories relevant to GearShare hardware marketplace
+                const targetClasses = ['cell phone', 'laptop', 'mouse', 'keyboard', 'book'];
                 
-                const fillBar = row.querySelector(".progress-bar-fill");
-                const percentageLabel = row.querySelector(".class-percentage");
-                
-                let simulatedScore;
-                if (index === activeIndex) {
-                    simulatedScore = Math.floor(Math.random() * 11) + 85; // 85% - 96%
-                    statusDisplay.innerText = `Verified Gear Match: ${CLASSES[index].toUpperCase()}`;
-                    statusDisplay.style.color = "#38bdf8";
-                } else {
-                    simulatedScore = Math.floor(Math.random() * 8); // 0% - 7%
+                if (targetClasses.includes(prediction.class)) {
+                    detectedText = `Verified Gear Match: ${prediction.class.toUpperCase()} (${Math.round(prediction.score * 100)}%)`;
+                    
+                    // Extract coordinates for object placement
+                    const [x, y, width, height] = prediction.bbox;
+                    
+                    // Draw bounding box outlines over detected items
+                    ctx.strokeStyle = '#f97316'; // GearShare Orange
+                    ctx.lineWidth = 4;
+                    ctx.strokeRect(x, y, width, height);
+                    
+                    // Draw small label background box
+                    ctx.fillStyle = '#f97316';
+                    ctx.fillRect(x, y - 25, ctx.measureText(prediction.class).width + 20, 25);
+                    
+                    // Print classification text label over bounding line
+                    ctx.fillStyle = '#1e1e24';
+                    ctx.font = 'bold 14px Segoe UI';
+                    ctx.fillText(prediction.class.toUpperCase(), x + 10, y - 7);
                 }
-                
-                fillBar.style.width = `${simulatedScore}%`;
-                percentageLabel.innerText = `${simulatedScore}%`;
             });
+
+            statusDisplay.innerText = detectedText;
+            
+            // Repeat tracking operations recursively on next layout refresh handle tick
+            window.requestAnimationFrame(predictLoop);
         }
     </script>
 </body>
